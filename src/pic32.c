@@ -1,4 +1,6 @@
 /*
+ *              issues: Programming JTAGEN bits (DS60001324B)
+ *
  * Copyright (C) 2005-2017 Darron Broad
  * All rights reserved.
  * 
@@ -341,7 +343,7 @@ struct pic32_dstab pic32_tab[] =
 
 	/* PIC32MK 0512/1024                          */
 	/* "RIPE_15a_000506"                          */
-#if 0
+#if 1
 	/* PIC32MM0016/0032/0064/0128/0256GPL0XX      */
 	{DS60001324B,	"RIPE_20b_000510"},
 #endif
@@ -1229,50 +1231,43 @@ pic32_download_custom_pe_mm(uint8_t *pe, uint32_t nbytes)
 	 * jr t9; nop16
 	 */
 
+    address |= 0x00000001;  //2017.02.20 Tim Wuu: microMIPS*
+  
 	pic32_xferinstruction(0x41B9 | (address & 0xFFFF0000));
 	pic32_xferinstruction(0x5339 | (address << 16));
 	pic32_xferinstruction(0x0C004599);
 }
 
-#if 0
+#if 1
 /*
  * Download the PE for PIC32MM devices
  *
  * DS60001145P-page 25
  * DS60001364C-page 23
  *
- * XXX DATA-SHEET INVALID
+ * 2017 Tim Wuu: Updated PE_loader
+ *
  */
 void
 pic32_download_pe_mm(uint8_t *pe, uint32_t nbytes)
 {
-	/* PE LOADER OP CODES */
-	static uint32_t peloader[] = {
-		0xDEAD41A7, // lui a3, 0xdead
-		0xFF2041A6, // lui a2, 0xff20
-		0xFF2041A5, // lui al, 0xff20
-			    // here1:
-		0x69E06A60, // lw a0, 0 (a2)
-			    // lw v1, 0 (a2)
-		0x000C94E3, // beq v1, a3, <here3>
-		0x8DFA0C00, // nop16
-			    // beqz v1, <here1>
-			    // here2:
-			    // lw v0, 0 (a1)
-		0xE9406DBE, // addiu v1, v1, -1
-			    // sw v0, 0 (a0)
-		0xADFB6E42, // addiu a0, a0, 4
-			    // bnez v1, <here2>
-		0xCFF20C00, // nop16
-			    // b <here1>
-		0x0C000C00, // nop16; nop16
-			    // here3:
-		0xA00041A2, // lui v0, 0xa000
-		0x03005042, // ori v0, v0, 0x300
-		0x0C004582, // jr v0
-			    // nop16
+	/* PE LOADER OP CODES, source: pic32mm_pe_loader.s */
+	static uint16_t peloader[] = {
+	   //[LOW],  [HIGH]
+		0x41A3, 0xFF20,
+		0x41A5, 0xDEAD,
+		0x6A30, 0x6930,
+		0x94A2, 0x0009,
+		0x41B9, 0xA000,
+		0x40E2, 0xFFF8,
+		0x6B30, 0xEB40,
+		0x6E42, 0xCFFA,
+		0x6D2E,
+		0x3339, 0x0301,
+		0x4599,
+		0x0C00, 0x0C00  //nop;nop; required
 	};
-	#define PESIZE (sizeof(peloader) / sizeof(uint32_t))
+	#define PESIZE (sizeof(peloader) / sizeof(uint16_t))
 
 printf("%s() 1\n", __func__);
 
@@ -1295,8 +1290,8 @@ printf("%s() 1\n", __func__);
 	 * addiu a0,a0,4
 	 */
 
-	for (uint32_t i = 0; i < PESIZE; ++i) {
-		pic32_xferinstruction(0x41A6 | (peloader[i] & 0xFFFF0000));
+	for (uint32_t i = 0; i < PESIZE; i+=2) {
+		pic32_xferinstruction(0x41A6 | (peloader[i+1] & << 16));
 		pic32_xferinstruction(0x50C6 | (peloader[i] << 16));
 		pic32_xferinstruction(0x6E42EB40);
 	}
@@ -1310,8 +1305,12 @@ printf("%s() 1\n", __func__);
 	 */
 
 	pic32_xferinstruction(0xA00041B9);
-	pic32_xferinstruction(0x02005339);
+	pic32_xferinstruction(0x02015339);  // 2017 Tim Wuu: bug fix, microMIPS*
 	pic32_xferinstruction(0x0C004599);
+	pic32_xferinstruction(0x0C000C00);  // nop16; nop16; required
+	pic32_xferinstruction(0x0C000C00);  // nop16; nop16; required
+
+	// microMIPS*: MIPS Architecture microMIPS32 instructionSet, 2.4 ISA Mode Switch
 
 	/*
 	 * Load the PE using the PE_loader.
@@ -1805,7 +1804,9 @@ pic32_pe_load(void)
 	default:pic32_download_pe_m4k(pe, nbytes);
 		break;
 	case DS60001324B: /* PIC32MM */
-		pic32_download_custom_pe_mm(pe, nbytes);
+		//2017.02.20 Tim Wuu
+		//pic32_download_custom_pe_mm(pe, nbytes);
+		pic32_download_pe_mm(pe, nbytes)
 		break;
 	}
 
