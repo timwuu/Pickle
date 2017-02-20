@@ -1,4 +1,5 @@
 /*
+ * 2017.02 Tim Wuu: Fixes PE Loader issues with PIC32MM family
  *              issues: Programming JTAGEN bits (DS60001324B)
  *
  * Copyright (C) 2005-2017 Darron Broad
