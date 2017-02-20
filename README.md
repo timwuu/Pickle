@@ -13,3 +13,6 @@ Pickle Microchip PIC ICSP is distributed in the hope that it will be useful, but
 You should have received a copy of the GNU General Public License along with Pickle Microchip PIC ICSP. If not, see http://www.gnu.org/licenses/
 
 GOTO http://wiki.kewl.org/dokuwiki/projects:pickle
+
+### Log:
+2017.02.20 Tim Wuu: Fixes PIC32MM PE Loader issues (not tested yet). 
